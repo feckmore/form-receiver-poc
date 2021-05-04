@@ -1,0 +1,20 @@
+service: form-receiver-poc
+frameworkVersion: '2'
+
+provider:
+  name: aws
+  runtime: go1.x
+  lambdaHashingVersion: 20201221
+
+package:
+  patterns:
+    - '!./**'
+    - ./bin/**
+
+functions:
+  form:
+    handler: bin/form
+    events:
+      - httpApi:
+          path: /form
+          method: post
