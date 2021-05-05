@@ -26,23 +26,19 @@ func Handler(ctx context.Context, request Request) (Response, error) {
 	}
 
 	out, err := json.Marshal(wrapper)
-	log.Println(string(out))
-
-	// var buf bytes.Buffer
-
-	// body, err := json.Marshal(map[string]interface{}{
-	// 	"message": "Go Serverless v1.0! Your function executed successfully!",
-	// })
 	if err != nil {
 		return Response{StatusCode: 404}, err
 	}
-	// json.HTMLEscape(&buf, body)
+	log.Println(string(out))
+	err = publishToTopic(string(out))
+	if err != nil {
+		return Response{StatusCode: 404}, err
+	}
 
 	resp := Response{
 		StatusCode:      200,
 		IsBase64Encoded: false,
-		// Body:            buf.String(),
-		Body: string(out),
+		Body:            string(out),
 		Headers: map[string]string{
 			"Content-Type":           "application/json",
 			"X-MyCompany-Func-Reply": "form-handler",
@@ -74,7 +70,7 @@ type FormWrapper struct {
 
 func (w *FormWrapper) UnmarshalJSON(data []byte) error {
 	log.Println("UnmarshalJSON()")
-	log.Println(data)
+	log.Println(string(data))
 
 	type Source struct {
 		SourceID string `json:"source"`
@@ -86,30 +82,20 @@ func (w *FormWrapper) UnmarshalJSON(data []byte) error {
 		log.Println(err)
 		return err
 	}
-
-	log.Printf("%+v", source)
+	out, _ := json.Marshal(source)
+	log.Println(string(out))
 
 	switch source.SourceID {
 	case "first":
 		log.Println("do first thing")
 		var a A
+		w.A = &a
 		return json.Unmarshal(data, &a)
 	case "second":
 		log.Println("do second thing")
 		var b B
-		err = json.Unmarshal(data, &b)
-		if err != nil {
-			log.Println(err)
-			return err
-		}
-		log.Printf("%+v", b)
 		w.B = &b
-
-		topicARN := os.Getenv("SNS_TOPIC_ARN")
-		log.Println(topicARN)
-		err = publishToTopic(topicARN, b.Firstname)
-
-		return err
+		return json.Unmarshal(data, &b)
 	default:
 		log.Println("do default thing")
 	}
@@ -117,27 +103,37 @@ func (w *FormWrapper) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func publishToTopic(arn, message string) error {
-	log.Println("publishToTopic():", arn, message)
+func publishToTopic(message string) error {
+	topicARN := os.Getenv("SNS_TOPIC_ARN")
+	log.Println("topic ARN:", topicARN)
+
+	log.Println("publishToTopic():", topicARN, message)
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 	log.Printf("%+v", sess)
 	svc := sns.New(sess)
 	log.Printf("%+v", svc)
-	subject := "ATS"
+	subject := "Form Submission Received" // for email subscriptions
 	result, err := svc.Publish(&sns.PublishInput{
 		Subject:  &subject,
 		Message:  &message,
-		TopicArn: &arn,
+		TopicArn: &topicARN,
 	})
 
 	if err != nil {
 		log.Println(err)
 		return err
 	}
-
-	log.Printf("%+v", *result)
+	out, _ := json.Marshal(*result)
+	log.Println(string(out))
 
 	return nil
+}
+
+func logAsJSON(in interface{}) (string, error) {
+	out, err := json.Marshal(in)
+	log.Println(string(out))
+
+	return string(out), err
 }
