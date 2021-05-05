@@ -1,10 +1,27 @@
 service: form-receiver-poc
 frameworkVersion: '2'
+configValidationMode: error
+
+custom:
+  topicName: form-receiver-topic
 
 provider:
   name: aws
   runtime: go1.x
   lambdaHashingVersion: 20201221
+
+  region: ${opt:region, 'us-east-1'}
+  
+  environment:
+    SNS_TOPIC_NAME: ${self:custom.topicName}
+    SNS_TOPIC_ARN: !Ref FormTopic
+
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action: "*"
+          Resource: arn:aws:sns:*:*:${self:custom.topicName}
 
 package:
   patterns:
@@ -18,3 +35,10 @@ functions:
       - httpApi:
           path: /form
           method: post
+
+resources:
+  Resources:
+    FormTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:custom.topicName}
