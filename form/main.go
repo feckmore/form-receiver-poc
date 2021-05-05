@@ -130,10 +130,3 @@ func publishToTopic(message string) error {
 
 	return nil
 }
-
-func logAsJSON(in interface{}) (string, error) {
-	out, err := json.Marshal(in)
-	log.Println(string(out))
-
-	return string(out), err
-}
