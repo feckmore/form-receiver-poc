@@ -5,13 +5,10 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sns"
+	"github.com/feckmore/form-receiver-poc/notification"
 	"github.com/feckmore/form-receiver-poc/response"
 )
 
@@ -47,7 +44,7 @@ func Handler(ctx context.Context, request Request) (response.Response, error) {
 		return response.WithError(http.StatusBadRequest, err)
 	}
 	log.Println(string(out))
-	err = publishToTopic(string(out))
+	err = notification.PublishToTopic(string(out))
 	if err != nil {
 		return response.WithError(http.StatusBadRequest, err)
 	}
@@ -91,41 +88,6 @@ func (w *FormWrapper) UnmarshalJSON(data []byte) error {
 	default:
 		log.Println("do default thing")
 	}
-
-	return nil
-}
-
-func publishToTopic(message string) error {
-	topicARN := os.Getenv("SNS_TOPIC_ARN")
-	log.Println("topic ARN:", topicARN)
-
-	log.Println("publishToTopic():", topicARN, message)
-	sess := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
-
-	log.Printf("%+v", sess)
-	svc := sns.New(sess)
-	log.Printf("%+v", svc)
-
-	result, err := svc.Publish(&sns.PublishInput{
-		Subject: aws.String("Form Submission Received"), // for email subscriptions
-		Message: &message,
-		MessageAttributes: map[string]*sns.MessageAttributeValue{
-			"Source": {
-				DataType:    aws.String("String"),
-				StringValue: aws.String("Source Value Goes Here"),
-			},
-		},
-		TopicArn: &topicARN,
-	})
-
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-	out, _ := json.Marshal(*result)
-	log.Println(string(out))
 
 	return nil
 }
