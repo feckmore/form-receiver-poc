@@ -4,53 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sns"
+	"github.com/feckmore/form-receiver-poc/response"
 )
 
-type Request events.APIGatewayProxyRequest
-type Response events.APIGatewayProxyResponse
-
-// Handler is our lambda handler invoked by the `lambda.Start` function call
-func Handler(ctx context.Context, request Request) (Response, error) {
-	log.Printf("%+v", request)
-
-	var wrapper FormWrapper
-	err := json.Unmarshal([]byte(request.Body), &wrapper)
-	if err != nil {
-		return Response{StatusCode: 404}, err
-	}
-
-	out, err := json.Marshal(wrapper)
-	if err != nil {
-		return Response{StatusCode: 404}, err
-	}
-	log.Println(string(out))
-	err = publishToTopic(string(out))
-	if err != nil {
-		return Response{StatusCode: 404}, err
-	}
-
-	resp := Response{
-		StatusCode:      200,
-		IsBase64Encoded: false,
-		Body:            string(out),
-		Headers: map[string]string{
-			"Content-Type":           "application/json",
-			"X-MyCompany-Func-Reply": "form-handler",
-		},
-	}
-
-	return resp, nil
-}
-
-func main() {
-	log.SetFlags(log.Llongfile)
-	lambda.Start(Handler)
+type FormWrapper struct {
+	*A `json:",omitempty"`
+	*B `json:",omitempty"`
 }
 
 type A struct {
@@ -63,9 +30,34 @@ type B struct {
 	Firstname string `json:"firstname"`
 }
 
-type FormWrapper struct {
-	*A `json:",omitempty"`
-	*B `json:",omitempty"`
+type Request events.APIGatewayProxyRequest
+
+// Handler is our lambda handler invoked by the `lambda.Start` function call
+func Handler(ctx context.Context, request Request) (response.Response, error) {
+	log.Printf("%+v", request)
+
+	var wrapper FormWrapper
+	err := json.Unmarshal([]byte(request.Body), &wrapper)
+	if err != nil {
+		return response.WithError(http.StatusBadRequest, err)
+	}
+
+	out, err := json.Marshal(wrapper)
+	if err != nil {
+		return response.WithError(http.StatusBadRequest, err)
+	}
+	log.Println(string(out))
+	err = publishToTopic(string(out))
+	if err != nil {
+		return response.WithError(http.StatusBadRequest, err)
+	}
+
+	return response.WithBody(http.StatusOK, string(out), nil)
+}
+
+func main() {
+	log.SetFlags(log.Llongfile)
+	lambda.Start(Handler)
 }
 
 func (w *FormWrapper) UnmarshalJSON(data []byte) error {
@@ -111,13 +103,20 @@ func publishToTopic(message string) error {
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
+
 	log.Printf("%+v", sess)
 	svc := sns.New(sess)
 	log.Printf("%+v", svc)
-	subject := "Form Submission Received" // for email subscriptions
+
 	result, err := svc.Publish(&sns.PublishInput{
-		Subject:  &subject,
-		Message:  &message,
+		Subject: aws.String("Form Submission Received"), // for email subscriptions
+		Message: &message,
+		MessageAttributes: map[string]*sns.MessageAttributeValue{
+			"Source": {
+				DataType:    aws.String("String"),
+				StringValue: aws.String("Source Value Goes Here"),
+			},
+		},
 		TopicArn: &topicARN,
 	})
 
