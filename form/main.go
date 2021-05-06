@@ -8,6 +8,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/feckmore/form-receiver-poc/form/model"
 	"github.com/feckmore/form-receiver-poc/notification"
 	"github.com/feckmore/form-receiver-poc/response"
 )
@@ -18,7 +19,7 @@ type Request events.APIGatewayProxyRequest
 func Handler(ctx context.Context, request Request) (response.Response, error) {
 	log.Printf("%+v", request)
 
-	var wrapper FormWrapper
+	var wrapper model.FormWrapper
 	err := json.Unmarshal([]byte(request.Body), &wrapper)
 	if err != nil {
 		return response.WithError(http.StatusBadRequest, err)
