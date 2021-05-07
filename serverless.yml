@@ -41,6 +41,16 @@ functions:
           path: /submit
           method: post
 
+  process:
+    handler: bin/process
+    events:
+      - sqs:
+          arn: !GetAtt
+            - FormQueue
+            - Arn
+
+
+
 resources:
   Resources:
 
