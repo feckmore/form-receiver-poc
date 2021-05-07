@@ -8,7 +8,7 @@ import (
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/feckmore/form-receiver-poc/form/model"
+	"github.com/feckmore/form-receiver-poc/model"
 	"github.com/feckmore/form-receiver-poc/notification"
 	"github.com/feckmore/form-receiver-poc/response"
 )
