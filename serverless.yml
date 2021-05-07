@@ -4,6 +4,7 @@ configValidationMode: error
 
 custom:
   topicName: form-receiver-topic
+  queueName: form-receiver-queue
 
 provider:
   name: aws
@@ -19,9 +20,13 @@ provider:
   iam:
     role:
       statements:
-        - Effect: "Allow"
-          Action: "*"
+        - Effect: 'Allow'
+          Action: '*'
           Resource: arn:aws:sns:*:*:${self:custom.topicName}
+        - Effect: 'Allow'
+          Action:
+            - '*'
+          Resource: arn:aws:sqs:*:*:${self:custom.queueName}
 
 package:
   patterns:
@@ -29,7 +34,7 @@ package:
     - ./bin/**
 
 functions:
-  form:
+  form: # Lambda validates form submission & publishes message to SNS topic
     handler: bin/form
     events:
       - httpApi:
@@ -38,7 +43,42 @@ functions:
 
 resources:
   Resources:
-    FormTopic:
+
+    FormTopic: # Create SNS Topic
       Type: AWS::SNS::Topic
       Properties:
         TopicName: ${self:custom.topicName}
+
+    FormQueue: # Create SQS Queue
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.queueName}
+
+    FormQueueTopicSubscription:
+      Type: AWS::SNS::Subscription # subscribe SQS to SNS topic
+      Properties:
+        TopicArn: !Ref FormTopic
+        Endpoint: !GetAtt
+          - FormQueue
+          - Arn
+        Protocol: sqs
+        RawMessageDelivery: 'true'
+
+    AuditQueueSNSPolicy:
+      Type: AWS::SQS::QueuePolicy # allow SNS to send messages to SQS
+      Properties:
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+            - Sid: 'allow-sns-messages'
+              Effect: Allow
+              Principal: '*'
+              Action: SQS:SendMessage
+              Resource: !GetAtt
+                - FormQueue
+                - Arn
+              Condition:
+                ArnEquals:
+                  'aws:SourceArn': !Ref FormTopic
+        Queues:
+          - Ref: FormQueue
