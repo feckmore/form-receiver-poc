@@ -2,7 +2,7 @@
 
 build: gomodgen
 	export GO111MODULE=on
-	env GOOS=linux go build -ldflags="-s -w" -o bin/form form/main.go
+	env GOOS=linux go build -ldflags="-s -w" -o bin/submit submit/main.go
 
 clean:
 	rm -rf ./bin ./vendor go.sum

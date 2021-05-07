@@ -34,11 +34,11 @@ package:
     - ./bin/**
 
 functions:
-  form: # Lambda validates form submission & publishes message to SNS topic
-    handler: bin/form
+  submit: # Lambda validates form submission & publishes message to SNS topic
+    handler: bin/submit
     events:
       - httpApi:
-          path: /form
+          path: /submit
           method: post
 
 resources:

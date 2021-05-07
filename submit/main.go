@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/feckmore/form-receiver-poc/model"
-	"github.com/feckmore/form-receiver-poc/notification"
 	"github.com/feckmore/form-receiver-poc/response"
+	"github.com/feckmore/form-receiver-poc/submit/notify"
 )
 
 type Request events.APIGatewayProxyRequest
@@ -30,7 +30,7 @@ func Handler(ctx context.Context, request Request) (response.Response, error) {
 		return response.WithError(http.StatusBadRequest, err)
 	}
 	log.Println(string(out))
-	err = notification.PublishToTopic(string(out))
+	err = notify.PublishToTopic(string(out))
 	if err != nil {
 		return response.WithError(http.StatusBadRequest, err)
 	}
