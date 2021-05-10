@@ -1,10 +1,10 @@
 service: form-receiver-poc
-frameworkVersion: '2'
+frameworkVersion: "2"
 configValidationMode: error
 
 custom:
   topicName: form-receiver-topic
-  queueName: form-receiver-queue
+  processQueueName: form-receiver-process-queue
 
 provider:
   name: aws
@@ -12,7 +12,7 @@ provider:
   lambdaHashingVersion: 20201221
 
   region: ${opt:region, 'us-east-1'}
-  
+
   environment:
     SNS_TOPIC_NAME: ${self:custom.topicName}
     SNS_TOPIC_ARN: !Ref FormTopic
@@ -20,17 +20,17 @@ provider:
   iam:
     role:
       statements:
-        - Effect: 'Allow'
-          Action: '*'
+        - Effect: "Allow"
+          Action: "*"
           Resource: arn:aws:sns:*:*:${self:custom.topicName}
-        - Effect: 'Allow'
+        - Effect: "Allow"
           Action:
-            - '*'
-          Resource: arn:aws:sqs:*:*:${self:custom.queueName}
+            - "*"
+          Resource: arn:aws:sqs:*:*:${self:custom.processQueueName}
 
 package:
   patterns:
-    - '!./**'
+    - "!./**"
     - ./bin/**
 
 functions:
@@ -46,49 +46,46 @@ functions:
     events:
       - sqs:
           arn: !GetAtt
-            - FormQueue
+            - ProcessQueue
             - Arn
-
-
 
 resources:
   Resources:
-
     FormTopic: # Create SNS Topic
       Type: AWS::SNS::Topic
       Properties:
         TopicName: ${self:custom.topicName}
 
-    FormQueue: # Create SQS Queue
+    ProcessQueue: # Create SQS Queue
       Type: AWS::SQS::Queue
       Properties:
-        QueueName: ${self:custom.queueName}
+        QueueName: ${self:custom.processQueueName}
 
-    FormQueueTopicSubscription:
+    ProcessQueueTopicSubscription:
       Type: AWS::SNS::Subscription # subscribe SQS to SNS topic
       Properties:
         TopicArn: !Ref FormTopic
         Endpoint: !GetAtt
-          - FormQueue
+          - ProcessQueue
           - Arn
         Protocol: sqs
-        RawMessageDelivery: 'true'
+        RawMessageDelivery: "true"
 
     AuditQueueSNSPolicy:
       Type: AWS::SQS::QueuePolicy # allow SNS to send messages to SQS
       Properties:
         PolicyDocument:
-          Version: '2012-10-17'
+          Version: "2012-10-17"
           Statement:
-            - Sid: 'allow-sns-messages'
+            - Sid: "allow-sns-messages"
               Effect: Allow
-              Principal: '*'
+              Principal: "*"
               Action: SQS:SendMessage
               Resource: !GetAtt
-                - FormQueue
+                - ProcessQueue
                 - Arn
               Condition:
                 ArnEquals:
-                  'aws:SourceArn': !Ref FormTopic
+                  "aws:SourceArn": !Ref FormTopic
         Queues:
-          - Ref: FormQueue
+          - Ref: ProcessQueue
