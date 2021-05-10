@@ -5,6 +5,7 @@ configValidationMode: error
 custom:
   topicName: form-receiver-topic
   processQueueName: form-receiver-process-queue
+  storageQueueName: form-receiver-storage-queue
 
 provider:
   name: aws
@@ -56,10 +57,15 @@ resources:
       Properties:
         TopicName: ${self:custom.topicName}
 
-    ProcessQueue: # Create SQS Queue
+    ProcessQueue: # Create SQS Queue for processing
       Type: AWS::SQS::Queue
       Properties:
         QueueName: ${self:custom.processQueueName}
+
+    StorageQueue: # Create SQS Queue for storage
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:custom.storageQueueName}
 
     ProcessQueueTopicSubscription:
       Type: AWS::SNS::Subscription # subscribe SQS to SNS topic
@@ -71,7 +77,17 @@ resources:
         Protocol: sqs
         RawMessageDelivery: "true"
 
-    AuditQueueSNSPolicy:
+    StorageQueueTopicSubscription:
+      Type: AWS::SNS::Subscription # subscribe SQS to SNS topic
+      Properties:
+        TopicArn: !Ref FormTopic
+        Endpoint: !GetAtt
+          - StorageQueue
+          - Arn
+        Protocol: sqs
+        RawMessageDelivery: "true"
+
+    ProcessQueueSNSPolicy:
       Type: AWS::SQS::QueuePolicy # allow SNS to send messages to SQS
       Properties:
         PolicyDocument:
@@ -89,3 +105,22 @@ resources:
                   "aws:SourceArn": !Ref FormTopic
         Queues:
           - Ref: ProcessQueue
+
+    StorageQueueSNSPolicy:
+      Type: AWS::SQS::QueuePolicy # allow SNS to send messages to SQS
+      Properties:
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Sid: "allow-sns-messages"
+              Effect: Allow
+              Principal: "*"
+              Action: SQS:SendMessage
+              Resource: !GetAtt
+                - StorageQueue
+                - Arn
+              Condition:
+                ArnEquals:
+                  "aws:SourceArn": !Ref FormTopic
+        Queues:
+          - Ref: StorageQueue
