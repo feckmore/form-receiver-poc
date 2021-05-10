@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/feckmore/form-receiver-poc/model"
-	"github.com/feckmore/form-receiver-poc/response"
 	"github.com/feckmore/form-receiver-poc/submit/notify"
+	"github.com/feckmore/form-receiver-poc/submit/response"
 )
 
 type Request events.APIGatewayProxyRequest
