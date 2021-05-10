@@ -28,6 +28,10 @@ provider:
           Action:
             - "*"
           Resource: arn:aws:sqs:*:*:${self:custom.processQueueName}
+        - Effect: "Allow"
+          Action:
+            - "*"
+          Resource: arn:aws:sqs:*:*:${self:custom.storageQueueName}
 
 package:
   patterns:
@@ -48,6 +52,14 @@ functions:
       - sqs:
           arn: !GetAtt
             - ProcessQueue
+            - Arn
+
+  storage:
+    handler: bin/store
+    events:
+      - sqs:
+          arn: !GetAtt
+            - StorageQueue
             - Arn
 
 resources:

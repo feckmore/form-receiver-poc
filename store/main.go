@@ -12,7 +12,7 @@ type Request events.APIGatewayProxyRequest
 
 // Handler is our lambda handler invoked by the `lambda.Start` function call in main()
 func Handler(ctx context.Context, sqsEvent events.SQSEvent) error {
-	log.Println("Process Handler()")
+	log.Println("Storage Handler()")
 	log.Printf("%+v", sqsEvent)
 
 	// loop through all messages found in SQS queue
