@@ -13,11 +13,15 @@ provider:
   runtime: go1.x
   lambdaHashingVersion: 20201221
 
+  stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
 
   environment:
+    REGION: ${self:provider.region}
+    DYNAMODB_TABLE_NAME: ${self:custom.tableName}
     SNS_TOPIC_NAME: ${self:custom.topicName}
     SNS_TOPIC_ARN: !Ref FormTopic
+    STAGE: ${self:provider.stage}
 
   iam:
     role:
@@ -33,6 +37,10 @@ provider:
           Action:
             - "*"
           Resource: arn:aws:sqs:*:*:${self:custom.storageQueueName}
+        - Effect: "Allow"
+          Action:
+            - "*"
+          Resource: arn:aws:dynamodb:*:*:table/${self:custom.tableName}
 
 package:
   patterns:
